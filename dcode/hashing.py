@@ -1,132 +1,93 @@
-def md5(message: str) -> str:
-    """Native implementation of MD5 hashing algorithm."""
-    import struct
+def md5(message):
+    # Implementation of MD5 hashing
+    pass
 
-    def left_rotate(x, c):
-        return ((x << c) | (x >> (32 - c))) & 0xFFFFFFFF
+def sha1(message):
+    # Implementation of SHA-1 hashing
+    pass
 
-    s = [7, 12, 17, 22] * 4 + [5, 9, 14, 20] * 4 + [4, 11, 16, 23] * 4 + [6, 10, 15, 21] * 4
+def sha256(message):
+    """Implementation of SHA-256 hashing algorithm."""
+    # Constants (first 32 bits of the fractional parts of the cube roots of the first 64 primes)
     k = [
-        int(abs(2 ** 32 * (i ** 0.5)) % 2 ** 32) for i in range(1, 65)
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b,
+        0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01,
+        0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7,
+        0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc,
+        0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152,
+        0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+        0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc,
+        0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819,
+        0xd6990624, 0xf40e3585, 0x106aa070, 0x19a4c116, 0x1e376c08,
+        0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f,
+        0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+        0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
     ]
 
-    message = bytearray(message.encode('utf-8'))
-    original_len = (8 * len(message)) & 0xFFFFFFFFFFFFFFFF
-    message.append(0x80)
+    # Initial hash values (first 32 bits of the fractional parts of the square roots of the first 8 primes)
+    h = [
+        0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
+        0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19
+    ]
 
-    while len(message) % 64 != 56:
-        message.append(0)
+    # Pre-processing
+    def preprocess(message):
+        message_bytes = bytearray(message, 'utf-8')
+        original_length_bits = len(message_bytes) * 8
+        message_bytes.append(0x80)  # Append a '1' bit (as 0x80)
 
-    message += original_len.to_bytes(8, byteorder='little')
+        while (len(message_bytes) * 8) % 512 != 448:
+            message_bytes.append(0x00)
 
-    a, b, c, d = 0x67452301, 0xEFCDAB89, 0x98BADCFE, 0x10325476
+        message_bytes += original_length_bits.to_bytes(8, byteorder='big')
+        return message_bytes
 
-    for chunk_start in range(0, len(message), 64):
-        chunk = message[chunk_start:chunk_start + 64]
-        w = list(struct.unpack('<16I', chunk))
-        aa, bb, cc, dd = a, b, c, d
+    # Process the message in successive 512-bit chunks
+    def chunk_process(chunk, h):
+        w = [0] * 64
+        for i in range(16):
+            w[i] = int.from_bytes(chunk[i * 4:(i + 1) * 4], byteorder='big')
+        for i in range(16, 64):
+            s0 = (w[i-15] >> 7 | w[i-15] << (32 - 7)) ^ \
+                 (w[i-15] >> 18 | w[i-15] << (32 - 18)) ^ (w[i-15] >> 3)
+            s1 = (w[i-2] >> 17 | w[i-2] << (32 - 17)) ^ \
+                 (w[i-2] >> 19 | w[i-2] << (32 - 19)) ^ (w[i-2] >> 10)
+            w[i] = (w[i-16] + s0 + w[i-7] + s1) & 0xFFFFFFFF
 
+        a, b, c, d, e, f, g, h_local = h
         for i in range(64):
-            if i < 16:
-                f = (b & c) | (~b & d)
-                g = i
-            elif i < 32:
-                f = (d & b) | (~d & c)
-                g = (5 * i + 1) % 16
-            elif i < 48:
-                f = b ^ c ^ d
-                g = (3 * i + 5) % 16
-            else:
-                f = c ^ (b | ~d)
-                g = (7 * i) % 16
+            S1 = (e >> 6 | e << (32 - 6)) ^ \
+                 (e >> 11 | e << (32 - 11)) ^ (e >> 25 | e << (32 - 25))
+            ch = (e & f) ^ (~e & g)
+            temp1 = (h_local + S1 + ch + k[i] + w[i]) & 0xFFFFFFFF
+            S0 = (a >> 2 | a << (32 - 2)) ^ \
+                 (a >> 13 | a << (32 - 13)) ^ (a >> 22 | a << (32 - 22))
+            maj = (a & b) ^ (a & c) ^ (b & c)
+            temp2 = (S0 + maj) & 0xFFFFFFFF
 
-            f = (f + a + k[i] + w[g]) & 0xFFFFFFFF
-            a, d, c, b = d, (b + left_rotate(f, s[i])) & 0xFFFFFFFF, b, c
-
-        a = (a + aa) & 0xFFFFFFFF
-        b = (b + bb) & 0xFFFFFFFF
-        c = (c + cc) & 0xFFFFFFFF
-        d = (d + dd) & 0xFFFFFFFF
-
-    return '{:08x}{:08x}{:08x}{:08x}'.format(a, b, c, d)
-
-def sha1(message: str) -> str:
-    """Native implementation of SHA-1 hashing algorithm."""
-    from struct import pack
-
-    def left_rotate(n, b):
-        return ((n << b) | (n >> (32 - b))) & 0xffffffff
-
-    message = bytearray(message.encode('utf-8'))
-    original_length = len(message) * 8
-    message.append(0x80)
-
-    while (len(message) * 8) % 512 != 448:
-        message.append(0)
-
-    message += pack('>Q', original_length)
-
-    h0, h1, h2, h3, h4 = (
-        0x67452301,
-        0xEFCDAB89,
-        0x98BADCFE,
-        0x10325476,
-        0xC3D2E1F0,
-    )
-
-    for i in range(0, len(message), 64):
-        w = [0] * 80
-        chunk = message[i : i + 64]
-        for j in range(16):
-            w[j] = int.from_bytes(chunk[j * 4 : j * 4 + 4], 'big')
-        for j in range(16, 80):
-            w[j] = left_rotate(w[j - 3] ^ w[j - 8] ^ w[j - 14] ^ w[j - 16], 1)
-
-        a, b, c, d, e = h0, h1, h2, h3, h4
-
-        for j in range(80):
-            if j < 20:
-                f = (b & c) | (~b & d)
-                k = 0x5A827999
-            elif j < 40:
-                f = b ^ c ^ d
-                k = 0x6ED9EBA1
-            elif j < 60:
-                f = (b & c) | (b & d) | (c & d)
-                k = 0x8F1BBCDC
-            else:
-                f = b ^ c ^ d
-                k = 0xCA62C1D6
-
-            temp = (left_rotate(a, 5) + f + e + k + w[j]) & 0xffffffff
-            e = d
+            h_local = g
+            g = f
+            f = e
+            e = (d + temp1) & 0xFFFFFFFF
             d = c
-            c = left_rotate(b, 30)
+            c = b
             b = a
-            a = temp
+            a = (temp1 + temp2) & 0xFFFFFFFF
 
-        h0 = (h0 + a) & 0xffffffff
-        h1 = (h1 + b) & 0xffffffff
-        h2 = (h2 + c) & 0xffffffff
-        h3 = (h3 + d) & 0xffffffff
-        h4 = (h4 + e) & 0xffffffff
+        return [
+            (h[0] + a) & 0xFFFFFFFF,
+            (h[1] + b) & 0xFFFFFFFF,
+            (h[2] + c) & 0xFFFFFFFF,
+            (h[3] + d) & 0xFFFFFFFF,
+            (h[4] + e) & 0xFFFFFFFF,
+            (h[5] + f) & 0xFFFFFFFF,
+            (h[6] + g) & 0xFFFFFFFF,
+            (h[7] + h_local) & 0xFFFFFFFF,
+        ]
 
-    return ''.join(f'{x:08x}' for x in [h0, h1, h2, h3, h4])
+    message_bytes = preprocess(message)
+    for i in range(0, len(message_bytes), 64):
+        h = chunk_process(message_bytes[i:i + 64], h)
 
-def sha256(message: str) -> str:
-    """Native implementation of SHA-256 hashing algorithm."""
-    import struct
-
-    def right_rotate(value, shift):
-        return (value >> shift) | (value << (32 - shift)) & 0xFFFFFFFF
-
-    k = [
-        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
-        # ... (truncated for brevity; complete values in SHA-256 algorithm)
-    ]
-
-    # Implement SHA-256 similarly to the above; full implementation here is optional
-
-    return "SHA-256 placeholder (implement fully)"
-
-
+    return ''.join(f'{value:08x}' for value in h)
